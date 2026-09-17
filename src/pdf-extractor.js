@@ -7,19 +7,23 @@ function normalizeText(text) {
   return text.replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\r/g, '');
 }
 
-function extractCompetenceFromHeader(text) {
-  // A competência só é aceita quando vinculada semanticamente ao rótulo
-  // "Competência:" do cabeçalho. Datas de emissão, admissão, férias etc.
-  // nunca podem ser usadas como competência.
-  const patterns = [
-    /Compet[eê]ncia\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/i,
-    /Compet[eê]ncia\s*:?\s{0,20}.*?\b(0[1-9]|1[0-2])\/(20\d{2})\b/i
-  ];
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) return parseCompetence(`${match[1]}/${match[2]}`);
-  }
-  return null;
+function itemPosition(item) {
+  return { x: item.transform?.[4] ?? 0, y: item.transform?.[5] ?? 0 };
+}
+
+function extractCompetenceFromHeaderItems(items) {
+  // Regra estrutural do relatório Domínio: na página 1, localizar o rótulo
+  // "Competência:" no cabeçalho e ler somente o MM/AAAA visualmente à direita,
+  // na mesma linha. Datas de emissão, admissão e demais datas são ignoradas.
+  const label = items.find(item => /Compet[eê]ncia\s*:/i.test(item.str));
+  if (!label) return null;
+  const labelPos = itemPosition(label);
+  const candidates = items
+    .filter(item => /^\s*(0[1-9]|1[0-2])\/(20\d{2})\s*$/.test(item.str))
+    .map(item => ({ item, ...itemPosition(item) }))
+    .filter(candidate => candidate.x > labelPos.x && Math.abs(candidate.y - labelPos.y) <= 5)
+    .sort((a, b) => a.x - b.x);
+  return candidates.length ? parseCompetence(candidates[0].item.str.trim()) : null;
 }
 
 function findServiceTotal(block) {
@@ -29,10 +33,7 @@ function findServiceTotal(block) {
   const summary = block.slice(start);
   const fgts = summary.match(/\bValor do FGTS:\s*([\d.]+,\d{2})/i);
   const apprentice = summary.match(/\bValor do FGTS Aprendiz:\s*([\d.]+,\d{2})/i);
-  return {
-    fgts: fgts ? parseBRL(fgts[1]) : null,
-    apprenticeFgts: apprentice ? parseBRL(apprentice[1]) : 0
-  };
+  return { fgts: fgts ? parseBRL(fgts[1]) : null, apprenticeFgts: apprentice ? parseBRL(apprentice[1]) : 0 };
 }
 
 function parseServiceBlock(headerMatch, block, page, log) {
@@ -41,15 +42,7 @@ function parseServiceBlock(headerMatch, block, page, log) {
   const totals = findServiceTotal(block);
   if (!registration.valid) log.warn(registration.reason, { serviceCode: code, page });
   if (totals.fgts === null) log.warn('Total "Valor do FGTS" não localizado no resumo do serviço.', { serviceCode: code, page });
-  return {
-    code: Number(code),
-    registrationType: type.toUpperCase(),
-    service: serviceNameRaw.trim(),
-    registration: registration.value,
-    fgts: totals.fgts ?? 0,
-    apprenticeFgts: totals.apprenticeFgts,
-    sourcePage: page
-  };
+  return { code: Number(code), registrationType: type.toUpperCase(), service: serviceNameRaw.trim(), registration: registration.value, fgts: totals.fgts ?? 0, apprenticeFgts: totals.apprenticeFgts, sourcePage: page };
 }
 
 export async function extractPayrollPdf(file, log, onProgress = () => {}) {
@@ -66,9 +59,12 @@ export async function extractPayrollPdf(file, log, onProgress = () => {}) {
     const text = normalizeText(content.items.map(item => item.str).join(' '));
     pages.push({ pageNo, text });
 
-    // O cabeçalho é repetido nas páginas. Procuramos exclusivamente o campo
-    // rotulado como Competência; não usamos a primeira data MM/AAAA da página.
-    if (!competence) competence = extractCompetenceFromHeader(text);
+    // A competência é lida exclusivamente do cabeçalho da primeira página.
+    if (pageNo === 1) {
+      competence = extractCompetenceFromHeaderItems(content.items);
+      if (!competence) throw new Error('Não foi possível ler a competência à direita do campo "Competência:" no cabeçalho da página 1.');
+      log.info(`Competência identificada no cabeçalho da página 1: ${competence.label}.`);
+    }
 
     if (!companyCnpj) {
       const cnpjMatch = text.match(COMPANY_CNPJ_RE);
@@ -101,8 +97,6 @@ export async function extractPayrollPdf(file, log, onProgress = () => {}) {
   }
 
   onProgress({ phase: 'Validando resultado', current: 1, total: 1, percent: 95 });
-  if (!competence) log.warn('Campo "Competência:" não identificado no cabeçalho do PDF.');
-  else log.info(`Competência identificada pelo cabeçalho: ${competence.label}.`);
   log.info(`${consolidated.size} serviço(s) consolidado(s) extraído(s).`);
   return { competence, companyCnpj, services: [...consolidated.values()].sort((a, b) => a.code - b.code), pageCount: pdf.numPages };
 }
