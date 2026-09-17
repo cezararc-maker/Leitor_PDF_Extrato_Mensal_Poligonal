@@ -23,9 +23,7 @@ export function exportWorkbook(result, dueDate, log) {
     ['Codigo', 'Tipo Inscrição', 'Servico', 'TAG', 'Inscrição', 'FGTS', 'FGTS Aprendiz', 'Total FGTS']
   ];
   const dataRows = rows.map(r => [r.Codigo, r['Tipo Inscrição'], r.Servico, r.TAG, r['Inscrição'], r.FGTS, r['FGTS Aprendiz'], null]);
-  const subtotalRow = dataRows.length + 4;
-  const sheetData = [...headerRows, ...dataRows, ['Subtotal', null, null, null, null, null, null, null]];
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...dataRows]);
 
   for (let row = 4; row <= dataRows.length + 3; row++) {
     const inscription = ws[`E${row}`];
@@ -38,11 +36,8 @@ export function exportWorkbook(result, dueDate, log) {
     ws[`H${row}`] = { t: 'n', f: `SUM(F${row}:G${row})`, z: '#,##0.00' };
   }
 
-  // SUBTOTAL 103 = COUNTA ignorando linhas filtradas e também linhas ocultadas manualmente.
-  // Assim o contador mostra somente quantos serviços estão visíveis naquele momento.
-  ws[`A${subtotalRow}`] = { t: 's', v: 'Subtotal' };
-  ws[`B${subtotalRow}`] = { t: 'n', f: `SUBTOTAL(103,A4:A${dataRows.length + 3})` };
-
+  // O arquivo termina na última linha de serviço. Não é criada linha de subtotal,
+  // evitando que sistemas consumidores interpretem o subtotal como um registro.
   ws['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 42 }, { wch: 42 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
   ws['!autofilter'] = { ref: `A3:H${Math.max(3, dataRows.length + 3)}` };
   XLSX.utils.book_append_sheet(wb, ws, 'FGTS por Obra');
