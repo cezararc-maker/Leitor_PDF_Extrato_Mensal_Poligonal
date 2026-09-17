@@ -24,7 +24,7 @@ export function exportWorkbook(result, dueDate, log) {
   const dataRows = rows.map(r => [r.Codigo, r['Tipo Inscrição'], r.Servico, r.TAG, r['Inscrição'], r.FGTS, r['FGTS Aprendiz']]);
   const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...dataRows]);
 
-  // Inscrição must always be text, preserving leading zeros and avoiding scientific notation.
+  // Inscrição sempre como texto: preserva zeros à esquerda e impede notação científica.
   for (let row = 4; row <= dataRows.length + 3; row++) {
     const cell = ws[`E${row}`];
     if (cell) { cell.t = 's'; cell.z = '@'; cell.v = String(cell.v); }
@@ -33,7 +33,14 @@ export function exportWorkbook(result, dueDate, log) {
       if (money) money.z = '#,##0.00';
     }
   }
+
   ws['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 42 }, { wch: 42 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
+
+  // Filtros integrados nos sete cabeçalhos da linha 3, abrangendo todas as linhas
+  // exportadas. O Excel exibirá as setas de filtro/classificação nos cabeçalhos.
+  const lastDataRow = Math.max(3, dataRows.length + 3);
+  ws['!autofilter'] = { ref: `A3:G${lastDataRow}` };
+
   XLSX.utils.book_append_sheet(wb, ws, 'FGTS por Obra');
 
   if (log.items.length) {
