@@ -7,6 +7,21 @@ function normalizeText(text) {
   return text.replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\r/g, '');
 }
 
+function extractCompetenceFromHeader(text) {
+  // A competência só é aceita quando vinculada semanticamente ao rótulo
+  // "Competência:" do cabeçalho. Datas de emissão, admissão, férias etc.
+  // nunca podem ser usadas como competência.
+  const patterns = [
+    /Compet[eê]ncia\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/i,
+    /Compet[eê]ncia\s*:?\s{0,20}.*?\b(0[1-9]|1[0-2])\/(20\d{2})\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return parseCompetence(`${match[1]}/${match[2]}`);
+  }
+  return null;
+}
+
 function findServiceTotal(block) {
   const summaryIndex = block.lastIndexOf('Resumo por Rubricas do Serviço');
   const liquidIndex = block.lastIndexOf('Líquido Serviço:');
@@ -50,7 +65,11 @@ export async function extractPayrollPdf(file, log, onProgress = () => {}) {
     const content = await page.getTextContent();
     const text = normalizeText(content.items.map(item => item.str).join(' '));
     pages.push({ pageNo, text });
-    if (!competence) competence = parseCompetence(text);
+
+    // O cabeçalho é repetido nas páginas. Procuramos exclusivamente o campo
+    // rotulado como Competência; não usamos a primeira data MM/AAAA da página.
+    if (!competence) competence = extractCompetenceFromHeader(text);
+
     if (!companyCnpj) {
       const cnpjMatch = text.match(COMPANY_CNPJ_RE);
       if (cnpjMatch) companyCnpj = normalizeRegistration(cnpjMatch[1], 'CNPJ').value;
@@ -74,7 +93,6 @@ export async function extractPayrollPdf(file, log, onProgress = () => {}) {
     onProgress({ phase: 'Extraindo serviços', current: i + 1, total: matches.length, percent: 55 + Math.round(((i + 1) / matches.length) * 35) });
   }
 
-  // Consolidate repeated service headers by code+registration, retaining the last service total found.
   const consolidated = new Map();
   for (const item of services) {
     const key = `${item.code}|${item.registrationType}|${item.registration}`;
@@ -83,7 +101,8 @@ export async function extractPayrollPdf(file, log, onProgress = () => {}) {
   }
 
   onProgress({ phase: 'Validando resultado', current: 1, total: 1, percent: 95 });
-  if (!competence) log.warn('Competência não identificada automaticamente no PDF.');
+  if (!competence) log.warn('Campo "Competência:" não identificado no cabeçalho do PDF.');
+  else log.info(`Competência identificada pelo cabeçalho: ${competence.label}.`);
   log.info(`${consolidated.size} serviço(s) consolidado(s) extraído(s).`);
   return { competence, companyCnpj, services: [...consolidated.values()].sort((a, b) => a.code - b.code), pageCount: pdf.numPages };
 }
