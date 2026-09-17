@@ -1,0 +1,7 @@
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+logs/
+output/
+tests/fixtures/private/
