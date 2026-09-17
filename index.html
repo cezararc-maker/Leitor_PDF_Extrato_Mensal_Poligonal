@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Leitor de Extrato FGTS por Obra</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Leitor de Extrato — FGTS por Obra</h1>
+      <p>Extrato Mensal, Complementar ou Consolidado → planilha para FGTS por obra.</p>
+    </header>
+
+    <section class="card controls">
+      <label for="pdfFile">Extrato em PDF</label>
+      <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+      <div class="buttons">
+        <button id="processBtn">Processar PDF</button>
+        <button id="exportBtn" disabled>Baixar XLSX</button>
+      </div>
+      <progress id="progress" max="100" value="0"></progress>
+      <div id="progressText">Aguardando arquivo — 0%</div>
+      <div id="status" class="status">Selecione um extrato para iniciar.</div>
+    </section>
+
+    <section class="card">
+      <div id="summary" class="summary"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Codigo</th><th>Tipo Inscrição</th><th>Servico</th><th>TAG</th><th>Inscrição</th><th>FGTS</th><th>FGTS Aprendiz</th></tr></thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
