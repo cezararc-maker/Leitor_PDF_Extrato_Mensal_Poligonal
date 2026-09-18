@@ -1,0 +1,10 @@
+{
+  "name": "leitor-pdf-extrato-mensal-poligonal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/rules.test.mjs",
+    "serve": "npx --yes http-server . -p 8080 -c-1"
+  }
+}

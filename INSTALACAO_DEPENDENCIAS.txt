@@ -1,0 +1,49 @@
+LEITOR PDF EXTRATO MENSAL - POLIGONAL
+=====================================
+
+1. EXECUÇÃO DO PORTAL
+---------------------
+O portal é HTML/JavaScript e processa o PDF no navegador.
+
+Necessário:
+- Google Chrome ou Microsoft Edge atualizado.
+- Internet nesta versão inicial para carregar PDF.js e SheetJS via CDN.
+
+Bibliotecas JavaScript utilizadas:
+- PDF.js 3.11.174 (Mozilla) - leitura do texto do PDF.
+- SheetJS xlsx 0.20.3 - criação do arquivo XLSX.
+
+Não é necessário instalar Python.
+
+2. DESENVOLVIMENTO / TESTES
+---------------------------
+Recomendado:
+- Git
+- Visual Studio Code
+- Node.js LTS (para testes automatizados e servidor local de desenvolvimento)
+
+Extensões VS Code recomendadas:
+- JavaScript and TypeScript Nightly (opcional)
+- Live Server (opcional)
+- GitLens (opcional)
+
+O VS Code já possui suporte nativo a HTML, CSS e JavaScript, portanto nenhuma extensão é obrigatória para editar o projeto.
+
+3. TESTES
+---------
+No terminal, na raiz do projeto:
+
+npm test
+
+4. SERVIDOR LOCAL
+-----------------
+No terminal:
+
+npm run serve
+
+Depois abra:
+http://localhost:8080
+
+5. OBSERVAÇÃO PARA VERSÃO FINAL
+-------------------------------
+Antes de distribuição definitiva, PDF.js e SheetJS deverão preferencialmente ser armazenados localmente no projeto para eliminar dependência de internet. Essa mudança será feita após validação funcional do extrator.
