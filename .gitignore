@@ -5,3 +5,7 @@ Thumbs.db
 logs/
 output/
 tests/fixtures/private/
+
+# Extratos operacionais locais
+*.pdf
+*.xlsx
